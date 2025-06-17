@@ -82,45 +82,6 @@ function mostrarCookies(cookies) {
   }
 }
 
-// ...resto del código igual...
-function mostrarCookies(cookies) {
-  const lista = document.getElementById("cookie-list");
-  lista.innerHTML = "";
-
-  cookies.forEach(c => {
-    const sospechosa = esSospechosa(c.name, c.value, c); // Analiza cada cookie
-    const div = document.createElement("div");
-    div.className = "cookie" + (sospechosa ? " sospechosa" : " segura");
-
-    let expira = c.expirationDate
-      ? new Date(c.expirationDate * 1000).toLocaleString()
-      : "Sesión";
-
-    div.innerHTML = `
-      <strong>${c.name}</strong><br>
-      Valor: <code>${c.value}</code><br>
-      Dominio: ${c.domain}<br>
-      Secure: ${c.secure}<br>
-      HttpOnly: ${c.httpOnly}<br>
-      Expira: ${expira}<br>
-    `;
-
-    // Si es sospechosa, agrega botón para eliminarla
-    if (sospechosa) {
-      const btn = document.createElement("button");
-      btn.textContent = "Eliminar";
-      btn.onclick = () => eliminarCookie(c);
-      div.appendChild(btn);
-    }
-
-    lista.appendChild(div);
-  });
-
-  if (cookies.length === 0) {
-    lista.textContent = "No hay cookies disponibles.";
-  }
-}
-
 /**
  * Elimina una cookie específica del sitio actual.
  * @param {object} cookie - Objeto cookie a eliminar
