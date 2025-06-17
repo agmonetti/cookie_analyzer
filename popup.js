@@ -1,37 +1,88 @@
-let cookiesGuardadas = []; // Guarda las cookies obtenidas del sitio actual
-let currentTab = null;     // Guarda la pestaña activa
+let cookiesGuardadas = [];
+let currentTab = null;
 
 /**
- * Determina si una cookie es sospechosa o insegura.
+ * Devuelve un array con los motivos por los que una cookie es sospechosa/insegura.
  * @param {string} nombre - Nombre de la cookie
  * @param {string} valor - Valor de la cookie
  * @param {object} cookie - Objeto cookie completo
- * @returns {boolean} true si es sospechosa/insegura, false si es segura
+ * @returns {Array<string>} Motivos de sospecha
+ */
+function motivosSospecha(nombre, valor, cookie) {
+    const motivos = [];
+    const patrones = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|id|login|password|hash/i;
+    const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
+    const hexRegex = /^[a-f0-9]{32,}$/i;
+    const base64Regex = /^[A-Za-z0-9+/=]{40,}$/;
+    const esHttps = cookie && cookie.domain && location.protocol === "https:";
+    if (valor.length > 50) motivos.push("Valor muy largo");
+    if (patrones.test(nombre)) motivos.push("Nombre sospechoso");
+    if (patrones.test(valor)) motivos.push("Valor sospechoso");
+    if (jwtRegex.test(valor)) motivos.push("Valor con formato JWT");
+    if (hexRegex.test(valor)) motivos.push("Valor hexadecimal largo");
+    if (base64Regex.test(valor)) motivos.push("Valor base64 largo");
+    if (cookie && esHttps && !cookie.secure) motivos.push("No es Secure en HTTPS");
+    return motivos;
+}
+
+/**
+ * Determina si una cookie es sospechosa/insegura.
  */
 function esSospechosa(nombre, valor, cookie) {
-    // Palabras clave comunes en cookies sensibles o de autenticación
-    const patrones = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|id|login|password|hash/i;
-    // Detecta si el valor parece un JWT (JSON Web Token)
-    const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
-    // Detecta valores hexadecimales largos (posibles hashes o identificadores)
-    const hexRegex = /^[a-f0-9]{32,}$/i;
-    // Detecta cadenas largas en base64 (posibles tokens o datos codificados)
-    const base64Regex = /^[A-Za-z0-9+/=]{40,}$/;
-    // Solo marca como insegura si no es Secure en HTTPS
-    const esHttps = cookie && cookie.domain && location.protocol === "https:";
-    const insegura = cookie && esHttps && !cookie.secure;
-
-    // Devuelve true si cumple alguna condición de sospecha o inseguridad
-    return (
-        valor.length > 50 ||              // Valor muy largo
-        patrones.test(nombre) ||          // Nombre sospechoso
-        patrones.test(valor) ||           // Valor sospechoso
-        jwtRegex.test(valor) ||           // Valor con formato JWT
-        hexRegex.test(valor) ||           // Valor hexadecimal largo
-        base64Regex.test(valor) ||        // Valor base64 largo
-        insegura                         // Configuración insegura (no Secure en HTTPS)
-    );
+    return motivosSospecha(nombre, valor, cookie).length > 0;
 }
+
+function mostrarCookies(cookies) {
+  const lista = document.getElementById("cookie-list");
+  lista.innerHTML = "";
+
+  cookies.forEach(c => {
+    const motivos = motivosSospecha(c.name, c.value, c);
+    const sospechosa = motivos.length > 0;
+    const div = document.createElement("div");
+    div.className = "cookie" + (sospechosa ? " sospechosa" : " segura");
+
+    let expira = c.expirationDate
+      ? new Date(c.expirationDate * 1000).toLocaleString()
+      : "Sesión";
+
+    div.innerHTML = `
+      <strong>${c.name}</strong><br>
+      Valor: <code>${c.value}</code><br>
+      Dominio: ${c.domain}<br>
+      Secure: ${c.secure}<br>
+      HttpOnly: ${c.httpOnly}<br>
+      Expira: ${expira}<br>
+    `;
+
+    // Si es sospechosa, muestra los motivos
+    if (sospechosa) {
+      const ul = document.createElement("ul");
+      ul.style.margin = "6px 0";
+      ul.style.paddingLeft = "18px";
+      ul.style.fontSize = "12px";
+      motivos.forEach(m => {
+        const li = document.createElement("li");
+        li.textContent = m;
+        ul.appendChild(li);
+      });
+      div.appendChild(ul);
+
+      const btn = document.createElement("button");
+      btn.textContent = "Eliminar";
+      btn.onclick = () => eliminarCookie(c);
+      div.appendChild(btn);
+    }
+
+    lista.appendChild(div);
+  });
+
+  if (cookies.length === 0) {
+    lista.textContent = "No hay cookies disponibles.";
+  }
+}
+
+// ...resto del código igual...
 function mostrarCookies(cookies) {
   const lista = document.getElementById("cookie-list");
   lista.innerHTML = "";

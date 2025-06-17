@@ -13,6 +13,13 @@ h2 {
   gap: 5px;
 }
 
+/* Puedes agregar esto a estilos.css si quieres resaltar los motivos */
+.cookie ul {
+  margin-top: 4px;
+  margin-bottom: 0;
+  color: #b30000;
+}
+
 #cookie-list {
   max-height: 300px;
   overflow-y: auto;
