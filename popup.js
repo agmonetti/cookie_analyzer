@@ -17,11 +17,9 @@ function esSospechosa(nombre, valor, cookie) {
     const hexRegex = /^[a-f0-9]{32,}$/i;
     // Detecta cadenas largas en base64 (posibles tokens o datos codificados)
     const base64Regex = /^[A-Za-z0-9+/=]{40,}$/;
-    // Verifica si la cookie es insegura: 
-    // - No es Secure en HTTPS
-    // - No es HttpOnly (accesible por JS)
+    // Solo marca como insegura si no es Secure en HTTPS
     const esHttps = cookie && cookie.domain && location.protocol === "https:";
-    const insegura = (cookie && esHttps && !cookie.secure) || (cookie && !cookie.httpOnly);
+    const insegura = cookie && esHttps && !cookie.secure;
 
     // Devuelve true si cumple alguna condición de sospecha o inseguridad
     return (
@@ -31,14 +29,9 @@ function esSospechosa(nombre, valor, cookie) {
         jwtRegex.test(valor) ||           // Valor con formato JWT
         hexRegex.test(valor) ||           // Valor hexadecimal largo
         base64Regex.test(valor) ||        // Valor base64 largo
-        insegura                         // Configuración insegura
+        insegura                         // Configuración insegura (no Secure en HTTPS)
     );
 }
-
-/**
- * Muestra la lista de cookies en el popup.
- * @param {Array} cookies - Lista de cookies a mostrar
- */
 function mostrarCookies(cookies) {
   const lista = document.getElementById("cookie-list");
   lista.innerHTML = "";
