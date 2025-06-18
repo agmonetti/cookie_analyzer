@@ -91,3 +91,119 @@ button:active {
   background-color: #d4edda;
   color: #155724;
 }
+
+.cookie.critica {
+  background-color: #f8d7da;
+  border-color: #dc3545;
+  border-width: 2px;
+}
+
+.cookie.alta {
+  background-color: #fff3cd;
+  border-color: #ffc107;
+  border-width: 2px;
+}
+
+.cookie.media {
+  background-color: #cce5ff;
+  border-color: #007bff;
+}
+
+.cookie.baja {
+  background-color: #f0f9ff;
+  border-color: #17a2b8;
+}
+
+.cookie-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.riesgo-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+.riesgo-critica { background-color: #dc3545; }
+.riesgo-alta { background-color: #ffc107; color: #000; }
+.riesgo-media { background-color: #007bff; }
+.riesgo-baja { background-color: #17a2b8; }
+
+.cookie-details {
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.motivos-sospecha {
+  background-color: rgba(220, 53, 69, 0.1);
+  padding: 6px;
+  border-radius: 4px;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.motivos-sospecha ul {
+  margin: 4px 0 0 0;
+  padding-left: 16px;
+}
+
+.motivos-sospecha li {
+  margin-bottom: 2px;
+  color: #721c24;
+}
+
+.btn-eliminar {
+  background-color: #dc3545;
+  font-size: 12px;
+  padding: 4px 8px;
+  margin-top: 6px;
+}
+
+.btn-eliminar:hover {
+  background-color: #c82333;
+}
+
+.resumen-riesgos {
+  background-color: #e9ecef;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.resumen-riesgos h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.stat {
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.stat.critica { background-color: #dc3545; color: white; }
+.stat.alta { background-color: #ffc107; color: #000; }
+.stat.media { background-color: #007bff; color: white; }
+.stat.segura { background-color: #28a745; color: white; }
+
+.no-cookies {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 20px;
+}
