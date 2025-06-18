@@ -115,20 +115,43 @@ function tieneAltaEntropia(valor) {
 function calcularRiesgo(nombre, valor, cookie) {
     let riesgo = 0;
     
+    // Patrones de seguridad críticos - MOVIDO AL PRINCIPIO
+    const patrones = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|login|password|hash/i;
+    const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
+    const hexRegex = /^[a-f0-9]{32,}$/i;
+    const base64Regex = /^[A-Za-z0-9+/=]{40,}$/;
+    const esHttps = currentTab?.url?.startsWith('https:');
+    
+    // RIESGOS CRÍTICOS DE SEGURIDAD (mayor puntuación)
+    if (patrones.test(nombre)) riesgo += 35; // Nombre relacionado con autenticación
+    if (patrones.test(valor)) riesgo += 30; // Valor relacionado con autenticación
+    if (jwtRegex.test(valor)) riesgo += 40; // Token JWT detectado
+    if (hexRegex.test(valor)) riesgo += 25; // Hash hexadecimal largo
+    if (base64Regex.test(valor)) riesgo += 25; // Cadena base64 larga
+    
+    // Configuración de seguridad insegura para cookies sensibles
+    if (patrones.test(nombre) || patrones.test(valor)) {
+        if (!cookie.httpOnly) riesgo += 25; // Cookie sensible accesible desde JavaScript
+        if (!cookie.secure && (esHttps || currentTab?.url?.includes('localhost'))) riesgo += 20; // Cookie sensible sin Secure
+        if (!cookie.sameSite || cookie.sameSite === 'none') riesgo += 20; // Cookie sensible sin SameSite
+    } else {
+        // Para cookies no sensibles, menor penalización
+        if (!cookie.httpOnly) riesgo += 10;
+        if (!cookie.secure && esHttps) riesgo += 8;
+        if (!cookie.sameSite || cookie.sameSite === 'none') riesgo += 8;
+    }
+    
     // Cookies de tracking conocidas
     if (cookiesConocidas.maliciosas.includes(nombre)) riesgo += 40;
     if (esTracking(nombre, valor, cookie)) riesgo += 35;
     if (esFingerprinting(nombre, valor, cookie)) riesgo += 45;
     if (esTerceros(cookie, currentTab?.url)) riesgo += 25;
     
-    // Características sospechosas
+    // Características sospechosas adicionales
     if (valor.length > 100) riesgo += 15;
     if (tieneAltaEntropia(valor)) riesgo += 20;
-    if (!cookie.secure && currentTab?.url?.startsWith('https:')) riesgo += 10;
-    if (!cookie.httpOnly) riesgo += 15;
-    if (!cookie.sameSite || cookie.sameSite === 'none') riesgo += 10;
     
-    // Patrones maliciosos
+    // Patrones maliciosos extremos
     const patronesMaliciosos = /malware|virus|exploit|xss|injection|backdoor/i;
     if (patronesMaliciosos.test(nombre) || patronesMaliciosos.test(valor)) riesgo += 80;
     
@@ -140,9 +163,19 @@ function calcularRiesgo(nombre, valor, cookie) {
  */
 function motivosSospecha(nombre, valor, cookie) {
     const motivos = [];
-    const riesgo = calcularRiesgo(nombre, valor, cookie);
     
-    // Categorización por nivel de riesgo
+    // Patrones de seguridad críticos
+    const patrones = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|login|password|hash/i;
+    const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
+    const hexRegex = /^[a-f0-9]{32,}$/i;
+    const base64Regex = /^[A-Za-z0-9+/=]{40,}$/;
+    const esHttps = currentTab?.url?.startsWith('https:');
+    const esLocalhost = currentTab?.url?.includes('localhost') || currentTab?.url?.includes('127.0.0.1');
+    
+    // Detectar si es una cookie sensible
+    const esCookieSensible = patrones.test(nombre) || patrones.test(valor);
+    
+    // Categorización por tipo
     if (cookiesConocidas.maliciosas.includes(nombre)) {
         motivos.push("Cookie de tracking conocida");
     }
@@ -163,23 +196,26 @@ function motivosSospecha(nombre, valor, cookie) {
         motivos.push("Valor con alta entropía (posiblemente cifrado)");
     }
     
-    // Motivos de seguridad originales mejorados
-    const patrones = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|login|password|hash/i;
-    const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
-    const hexRegex = /^[a-f0-9]{32,}$/i;
-    const base64Regex = /^[A-Za-z0-9+/=]{40,}$/;
-    const esHttps = currentTab?.url?.startsWith('https:');
-    
+    // Análisis de seguridad mejorado
     if (valor.length > 100) motivos.push("Valor extremadamente largo");
-    if (patrones.test(nombre)) motivos.push("Nombre relacionado con autenticación");
-    if (patrones.test(valor)) motivos.push("Valor relacionado con autenticación");
-    if (jwtRegex.test(valor)) motivos.push("Token JWT detectado");
+    if (patrones.test(nombre)) motivos.push("⚠️ CRÍTICO: Nombre relacionado con autenticación/sesión");
+    if (patrones.test(valor)) motivos.push("⚠️ CRÍTICO: Valor relacionado con autenticación");
+    if (jwtRegex.test(valor)) motivos.push("🔴 CRÍTICO: Token JWT detectado");
     if (hexRegex.test(valor)) motivos.push("Hash hexadecimal largo");
     if (base64Regex.test(valor)) motivos.push("Cadena base64 larga");
-    if (esHttps && !cookie.secure) motivos.push("No es Secure en sitio HTTPS");
-    if (!cookie.httpOnly && patrones.test(nombre)) motivos.push("Accesible desde JavaScript (riesgo XSS)");
-    if (!cookie.sameSite || cookie.sameSite === 'none') motivos.push("Sin protección SameSite");
     
+    // Configuración de seguridad - más estricto para cookies sensibles
+    if (esCookieSensible) {
+        if (!cookie.httpOnly) motivos.push("🔴 CRÍTICO: Cookie sensible accesible desde JavaScript (riesgo XSS)");
+        if (!cookie.secure && (esHttps || esLocalhost)) motivos.push("🔴 CRÍTICO: Cookie sensible sin flag Secure");
+        if (!cookie.sameSite || cookie.sameSite === 'none') motivos.push("🔴 CRÍTICO: Cookie sensible sin protección SameSite (riesgo CSRF)");
+    } else {
+        if (!cookie.httpOnly) motivos.push("Sin flag HttpOnly (accesible desde JavaScript)");
+        if (!cookie.secure && esHttps) motivos.push("Sin flag Secure en sitio HTTPS");
+        if (!cookie.sameSite || cookie.sameSite === 'none') motivos.push("Sin protección SameSite");
+    }
+    
+    const riesgo = calcularRiesgo(nombre, valor, cookie);
     return { motivos, riesgo };
 }
 
@@ -188,9 +224,8 @@ function motivosSospecha(nombre, valor, cookie) {
  */
 function esSospechosa(nombre, valor, cookie) {
     const { riesgo } = motivosSospecha(nombre, valor, cookie);
-    return riesgo > 30; // Umbral de riesgo
+    return riesgo >= 30; // Cambiado: >= 30 para ser consistente
 }
-
 /**
  * Obtiene el color basado en el nivel de riesgo
  */
@@ -199,6 +234,32 @@ function obtenerColorRiesgo(riesgo) {
     if (riesgo >= 50) return 'alta';
     if (riesgo >= 30) return 'media';
     return 'baja';
+}
+
+// Función principal para cargar cookies
+async function cargarCookies() {
+  try {
+    // Obtener la pestaña activa
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    currentTab = tab;
+    
+    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('moz-extension://')) {
+      document.getElementById("cookie-list").innerHTML = 
+        "<div class='no-cookies'>No se pueden analizar cookies en páginas internas del navegador.</div>";
+      return;
+    }
+
+    // Obtener cookies del sitio actual
+    const url = new URL(tab.url);
+    const cookies = await chrome.cookies.getAll({ domain: url.hostname });
+    
+    cookiesGuardadas = cookies;
+    mostrarCookies(cookies);
+  } catch (error) {
+    console.error('Error cargando cookies:', error);
+    document.getElementById("cookie-list").innerHTML = 
+      "<div class='no-cookies'>Error cargando cookies: " + error.message + "</div>";
+  }
 }
 
 function mostrarCookies(cookies) {
@@ -214,11 +275,12 @@ function mostrarCookies(cookies) {
 
   cookiesOrdenadas.forEach(c => {
     const { motivos, riesgo } = motivosSospecha(c.name, c.value, c);
-    const sospechosa = riesgo > 30;
+    const sospechosa = riesgo >= 30; // Cambiado: >= 30 es sospechosa
     const nivelRiesgo = obtenerColorRiesgo(riesgo);
     
     const div = document.createElement("div");
-    div.className = `cookie ${sospechosa ? nivelRiesgo : 'segura'}`;
+    // CORRECCIÓN: Si el riesgo es < 30, usar 'segura', sino usar el nivel de riesgo
+    div.className = `cookie ${riesgo < 30 ? 'segura' : nivelRiesgo}`;
 
     let expira = c.expirationDate
       ? new Date(c.expirationDate * 1000).toLocaleString()
@@ -242,7 +304,7 @@ function mostrarCookies(cookies) {
       </div>
     `;
 
-    // Si es sospechosa, muestra los motivos
+    // Solo mostrar motivos y botón eliminar si es sospechosa (riesgo >= 30)
     if (sospechosa && motivos.length > 0) {
       const motivosDiv = document.createElement("div");
       motivosDiv.className = "motivos-sospecha";
@@ -275,6 +337,7 @@ function mostrarCookies(cookies) {
   mostrarResumenRiesgos(cookies);
 }
 
+
 /**
  * Muestra un resumen de los riesgos encontrados
  */
@@ -294,11 +357,17 @@ function mostrarResumenRiesgos(cookies) {
 
   cookies.forEach(c => {
     const riesgo = calcularRiesgo(c.name, c.value, c);
-    if (riesgo >= 70) stats.criticas++;
-    else if (riesgo >= 50) stats.altas++;
-    else if (riesgo >= 30) stats.medias++;
-    else if (riesgo > 0) stats.bajas++;
-    else stats.seguras++;
+    
+    // CORRECCIÓN: Las cookies con riesgo < 30 se consideran seguras
+    if (riesgo < 30) {
+      stats.seguras++;
+    } else if (riesgo >= 70) {
+      stats.criticas++;
+    } else if (riesgo >= 50) {
+      stats.altas++;
+    } else if (riesgo >= 30) {
+      stats.medias++;
+    }
   });
 
   resumen.innerHTML = `
@@ -316,7 +385,88 @@ function mostrarResumenRiesgos(cookies) {
   }
 }
 
-// ...existing code...
+// Función para eliminar una cookie específica
+async function eliminarCookie(cookie) {
+  try {
+    await chrome.cookies.remove({
+      url: `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`,
+      name: cookie.name
+    });
+    
+    // Recargar la lista
+    cargarCookies();
+  } catch (error) {
+    console.error('Error eliminando cookie:', error);
+    alert('Error al eliminar la cookie: ' + error.message);
+  }
+}
 
-// Carga las cookies al abrir el popup
-cargarCookies();
+// Función para eliminar cookies sospechosas
+async function eliminarSospechosas() {
+  if (!cookiesGuardadas || cookiesGuardadas.length === 0) {
+    alert('No hay cookies para analizar');
+    return;
+  }
+
+  const sospechosas = cookiesGuardadas.filter(c => esSospechosa(c.name, c.value, c));
+  
+  if (sospechosas.length === 0) {
+    alert('No se encontraron cookies sospechosas');
+    return;
+  }
+
+  if (confirm(`¿Eliminar ${sospechosas.length} cookies sospechosas?`)) {
+    try {
+      for (const cookie of sospechosas) {
+        await chrome.cookies.remove({
+          url: `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`,
+          name: cookie.name
+        });
+      }
+      cargarCookies();
+    } catch (error) {
+      console.error('Error eliminando cookies:', error);
+      alert('Error al eliminar cookies: ' + error.message);
+    }
+  }
+}
+
+// Función para eliminar todas las cookies
+async function eliminarTodas() {
+  if (!currentTab) {
+    alert('No se pudo obtener información de la pestaña actual');
+    return;
+  }
+
+  try {
+    const url = new URL(currentTab.url);
+    const cookies = await chrome.cookies.getAll({ domain: url.hostname });
+    
+    if (cookies.length === 0) {
+      alert('No hay cookies para eliminar');
+      return;
+    }
+
+    if (confirm(`¿Eliminar TODAS las ${cookies.length} cookies del sitio ${url.hostname}?`)) {
+      for (const cookie of cookies) {
+        await chrome.cookies.remove({
+          url: `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`,
+          name: cookie.name
+        });
+      }
+      cargarCookies();
+    }
+  } catch (error) {
+    console.error('Error eliminando todas las cookies:', error);
+    alert('Error al eliminar cookies: ' + error.message);
+  }
+}
+
+// Event listeners para los botones
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('eliminar-sospechosas').addEventListener('click', eliminarSospechosas);
+  document.getElementById('eliminar-todas').addEventListener('click', eliminarTodas);
+  
+  // Cargar cookies al iniciar
+  cargarCookies();
+});
