@@ -35,4 +35,6 @@ The extension analyzes each cookie based on multiple criteria:
 - Doesn't work on internal browser pages
 - Cannot see HttpOnly cookies from JavaScript
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 ---
