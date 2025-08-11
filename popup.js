@@ -1,11 +1,11 @@
-let cookiesGuardadas = [];
+let savedCookies = [];
 let currentTab = null;
 
 /**
- * Base de datos de cookies conocidas como maliciosas o de tracking
+ * Database of known malicious or tracking cookies
  */
-const cookiesConocidas = {
-    maliciosas: [
+const knownCookies = {
+    malicious: [
         '_ga', '_gid', '_gat', '_gtag', '_fbp', '_fbc', 'fr', 'doubleclick',
         '_hjid', '_hjFirstSeen', '_hjIncludedInSessionSample', 'hotjar',
         'amplitude', 'mixpanel', 'segment', 'intercom', 'drift',
@@ -13,7 +13,7 @@ const cookiesConocidas = {
         'yandex_metrica', 'ya_metrica', '_ym_', '_yasc',
         'optimizely', 'vwo_uuid', 'ab_test', 'split_test'
     ],
-    seguimiento: [
+    tracking: [
         '_dc_gtm', '_gcl_', '_gac_', 'ads', 'adnxs', 'doubleclick',
         'facebook', 'linkedin', 'twitter', 'pinterest'
     ],
@@ -23,9 +23,9 @@ const cookiesConocidas = {
 };
 
 /**
- * Patrones de empresas de tracking conocidas
+ * Known tracking company domain patterns
  */
-const dominiosTracking = [
+const trackingDomains = [
     'google-analytics.com', 'googletagmanager.com', 'doubleclick.net',
     'facebook.com', 'connect.facebook.net', 'hotjar.com',
     'mixpanel.com', 'segment.com', 'amplitude.com',
@@ -33,24 +33,24 @@ const dominiosTracking = [
 ];
 
 /**
- * Detecta cookies de fingerprinting basándose en patrones avanzados
+ * Detects fingerprinting cookies based on advanced patterns
  */
-function esFingerprinting(nombre, valor, cookie) {
+function isFingerprinting(name, value, cookie) {
     const fingerprintPatterns = [
         /canvas|webgl|audio|font|screen|timezone|language|plugins/i,
         /fp_|fingerprint|device_id|browser_id/i,
-        /^[a-f0-9]{16,64}$/i // Hash de características del dispositivo
+        /^[a-f0-9]{16,64}$/i // Device characteristics hash
     ];
     
     return fingerprintPatterns.some(pattern => 
-        pattern.test(nombre) || pattern.test(valor)
+        pattern.test(name) || pattern.test(value)
     );
 }
 
 /**
- * Detecta cookies de tracking basándose en dominios y nombres conocidos
+ * Detects tracking cookies based on known domains and names
  */
-function esTracking(nombre, valor, cookie) {
+function isTracking(name, value, cookie) {
     const trackingPatterns = [
         /^_ga|_gid|_gat|_gtag|_utm|__utm/i,
         /facebook|fb_|_fbp|_fbc/i,
@@ -58,383 +58,383 @@ function esTracking(nombre, valor, cookie) {
         /hotjar|mixpanel|segment|amplitude/i
     ];
     
-    // Verificar si la cookie pertenece a un dominio de tracking conocido
-    const dominioTracking = dominiosTracking.some(dominio => 
-        cookie.domain.includes(dominio)
+    // Check if cookie belongs to known tracking domain
+    const trackingDomain = trackingDomains.some(domain => 
+        cookie.domain.includes(domain)
     );
     
-    // Verificar patrones en el nombre
-    const patronTracking = trackingPatterns.some(pattern => 
-        pattern.test(nombre) || pattern.test(valor)
+    // Check patterns in name
+    const trackingPattern = trackingPatterns.some(pattern => 
+        pattern.test(name) || pattern.test(value)
     );
     
-    return dominioTracking || patronTracking || cookiesConocidas.maliciosas.includes(nombre);
+    return trackingDomain || trackingPattern || knownCookies.malicious.includes(name);
 }
 
 /**
- * Detecta cookies de terceros (cross-site)
+ * Detects third-party (cross-site) cookies
  */
-function esTerceros(cookie, urlActual) {
-    if (!urlActual || !cookie.domain) return false;
+function isThirdParty(cookie, currentUrl) {
+    if (!currentUrl || !cookie.domain) return false;
     
     try {
-        const dominioActual = new URL(urlActual).hostname;
-        const dominioLimpio = dominioActual.replace(/^www\./, '');
-        const cookieDominio = cookie.domain.replace(/^\./, '').replace(/^www\./, '');
+        const currentDomain = new URL(currentUrl).hostname;
+        const cleanCurrentDomain = currentDomain.replace(/^www\./, '');
+        const cookieDomain = cookie.domain.replace(/^\./, '').replace(/^www\./, '');
         
-        return !cookieDominio.includes(dominioLimpio) && !dominioLimpio.includes(cookieDominio);
+        return !cookieDomain.includes(cleanCurrentDomain) && !cleanCurrentDomain.includes(cookieDomain);
     } catch (e) {
         return false;
     }
 }
 
 /**
- * Analiza la entropía del valor (detecta valores aleatorios/cifrados)
+ * Analyzes value entropy (detects random/encrypted values)
  */
-function tieneAltaEntropia(valor) {
-    if (valor.length < 10) return false;
+function hasHighEntropy(value) {
+    if (value.length < 10) return false;
     
     const charCounts = {};
-    for (let char of valor) {
+    for (let char of value) {
         charCounts[char] = (charCounts[char] || 0) + 1;
     }
     
     let entropy = 0;
-    const len = valor.length;
+    const len = value.length;
     for (let count of Object.values(charCounts)) {
         const probability = count / len;
         entropy -= probability * Math.log2(probability);
     }
     
-    return entropy > 4; // Alta entropía indica valor aleatorio/cifrado
+    return entropy > 4; // High entropy indicates random/encrypted value
 }
 
 /**
- * Calcula el nivel de riesgo de una cookie (0-100)
+ * Calculates cookie risk level (0-100)
  */
-function calcularRiesgo(nombre, valor, cookie) {
-    let riesgo = 0;
+function calculateRisk(name, value, cookie) {
+    let risk = 0;
     
-    // Patrones de seguridad críticos - MOVIDO AL PRINCIPIO
-    const patrones = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|login|password|hash/i;
+    // Critical security patterns - MOVED TO BEGINNING
+    const patterns = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|login|password|hash/i;
     const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
     const hexRegex = /^[a-f0-9]{32,}$/i;
     const base64Regex = /^[A-Za-z0-9+/=]{40,}$/;
-    const esHttps = currentTab?.url?.startsWith('https:');
+    const isHttps = currentTab?.url?.startsWith('https:');
     
-    // RIESGOS CRÍTICOS DE SEGURIDAD (mayor puntuación)
-    if (patrones.test(nombre)) riesgo += 35; // Nombre relacionado con autenticación
-    if (patrones.test(valor)) riesgo += 30; // Valor relacionado con autenticación
-    if (jwtRegex.test(valor)) riesgo += 40; // Token JWT detectado
-    if (hexRegex.test(valor)) riesgo += 25; // Hash hexadecimal largo
-    if (base64Regex.test(valor)) riesgo += 25; // Cadena base64 larga
+    // CRITICAL SECURITY RISKS (higher score)
+    if (patterns.test(name)) risk += 35; // Authentication-related name
+    if (patterns.test(value)) risk += 30; // Authentication-related value
+    if (jwtRegex.test(value)) risk += 40; // JWT token detected
+    if (hexRegex.test(value)) risk += 25; // Long hexadecimal hash
+    if (base64Regex.test(value)) risk += 25; // Long base64 string
     
-    // Configuración de seguridad insegura para cookies sensibles
-    if (patrones.test(nombre) || patrones.test(valor)) {
-        if (!cookie.httpOnly) riesgo += 25; // Cookie sensible accesible desde JavaScript
-        if (!cookie.secure && (esHttps || currentTab?.url?.includes('localhost'))) riesgo += 20; // Cookie sensible sin Secure
-        if (!cookie.sameSite || cookie.sameSite === 'none') riesgo += 20; // Cookie sensible sin SameSite
+    // Insecure configuration for sensitive cookies
+    if (patterns.test(name) || patterns.test(value)) {
+        if (!cookie.httpOnly) risk += 25; // Sensitive cookie accessible from JavaScript
+        if (!cookie.secure && (isHttps || currentTab?.url?.includes('localhost'))) risk += 20; // Sensitive cookie without Secure
+        if (!cookie.sameSite || cookie.sameSite === 'none') risk += 20; // Sensitive cookie without SameSite
     } else {
-        // Para cookies no sensibles, menor penalización
-        if (!cookie.httpOnly) riesgo += 10;
-        if (!cookie.secure && esHttps) riesgo += 8;
-        if (!cookie.sameSite || cookie.sameSite === 'none') riesgo += 8;
+        // For non-sensitive cookies, lower penalty
+        if (!cookie.httpOnly) risk += 10;
+        if (!cookie.secure && isHttps) risk += 8;
+        if (!cookie.sameSite || cookie.sameSite === 'none') risk += 8;
     }
     
-    // Cookies de tracking conocidas
-    if (cookiesConocidas.maliciosas.includes(nombre)) riesgo += 40;
-    if (esTracking(nombre, valor, cookie)) riesgo += 35;
-    if (esFingerprinting(nombre, valor, cookie)) riesgo += 45;
-    if (esTerceros(cookie, currentTab?.url)) riesgo += 25;
+    // Known tracking cookies
+    if (knownCookies.malicious.includes(name)) risk += 40;
+    if (isTracking(name, value, cookie)) risk += 35;
+    if (isFingerprinting(name, value, cookie)) risk += 45;
+    if (isThirdParty(cookie, currentTab?.url)) risk += 25;
     
-    // Características sospechosas adicionales
-    if (valor.length > 100) riesgo += 15;
-    if (tieneAltaEntropia(valor)) riesgo += 20;
+    // Additional suspicious characteristics
+    if (value.length > 100) risk += 15;
+    if (hasHighEntropy(value)) risk += 20;
     
-    // Patrones maliciosos extremos
-    const patronesMaliciosos = /malware|virus|exploit|xss|injection|backdoor/i;
-    if (patronesMaliciosos.test(nombre) || patronesMaliciosos.test(valor)) riesgo += 80;
+    // Extreme malicious patterns
+    const maliciousPatterns = /malware|virus|exploit|xss|injection|backdoor/i;
+    if (maliciousPatterns.test(name) || maliciousPatterns.test(value)) risk += 80;
     
-    return Math.min(riesgo, 100);
+    return Math.min(risk, 100);
 }
 
 /**
- * Devuelve un array con los motivos por los que una cookie es sospechosa/insegura.
+ * Returns array with reasons why a cookie is suspicious/insecure
  */
-function motivosSospecha(nombre, valor, cookie) {
-    const motivos = [];
+function suspiciousReasons(name, value, cookie) {
+    const reasons = [];
     
-    // Patrones de seguridad críticos
-    const patrones = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|login|password|hash/i;
+    // Critical security patterns
+    const patterns = /token|auth|session|jwt|access|refresh|csrf|secret|key|api|bearer|sid|uid|login|password|hash/i;
     const jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/;
     const hexRegex = /^[a-f0-9]{32,}$/i;
     const base64Regex = /^[A-Za-z0-9+/=]{40,}$/;
-    const esHttps = currentTab?.url?.startsWith('https:');
-    const esLocalhost = currentTab?.url?.includes('localhost') || currentTab?.url?.includes('127.0.0.1');
+    const isHttps = currentTab?.url?.startsWith('https:');
+    const isLocalhost = currentTab?.url?.includes('localhost') || currentTab?.url?.includes('127.0.0.1');
     
-    // Detectar si es una cookie sensible
-    const esCookieSensible = patrones.test(nombre) || patrones.test(valor);
+    // Detect if it's a sensitive cookie
+    const isSensitiveCookie = patterns.test(name) || patterns.test(value);
     
-    // Categorización por tipo
-    if (cookiesConocidas.maliciosas.includes(nombre)) {
-        motivos.push("Cookie de tracking conocida");
+    // Categorization by type
+    if (knownCookies.malicious.includes(name)) {
+        reasons.push("Known tracking cookie");
     }
     
-    if (esTracking(nombre, valor, cookie)) {
-        motivos.push("Cookie de seguimiento/analytics");
+    if (isTracking(name, value, cookie)) {
+        reasons.push("Tracking/analytics cookie");
     }
     
-    if (esFingerprinting(nombre, valor, cookie)) {
-        motivos.push("Posible fingerprinting del dispositivo");
+    if (isFingerprinting(name, value, cookie)) {
+        reasons.push("Possible device fingerprinting");
     }
     
-    if (esTerceros(cookie, currentTab?.url)) {
-        motivos.push("Cookie de terceros (cross-site)");
+    if (isThirdParty(cookie, currentTab?.url)) {
+        reasons.push("Third-party (cross-site) cookie");
     }
     
-    if (tieneAltaEntropia(valor)) {
-        motivos.push("Valor con alta entropía (posiblemente cifrado)");
+    if (hasHighEntropy(value)) {
+        reasons.push("High entropy value (possibly encrypted)");
     }
     
-    // Análisis de seguridad mejorado
-    if (valor.length > 100) motivos.push("Valor extremadamente largo");
-    if (patrones.test(nombre)) motivos.push("⚠️ CRÍTICO: Nombre relacionado con autenticación/sesión");
-    if (patrones.test(valor)) motivos.push("⚠️ CRÍTICO: Valor relacionado con autenticación");
-    if (jwtRegex.test(valor)) motivos.push("🔴 CRÍTICO: Token JWT detectado");
-    if (hexRegex.test(valor)) motivos.push("Hash hexadecimal largo");
-    if (base64Regex.test(valor)) motivos.push("Cadena base64 larga");
+    // Enhanced security analysis
+    if (value.length > 100) reasons.push("Extremely long value");
+    if (patterns.test(name)) reasons.push("⚠️ CRITICAL: Authentication/session related name");
+    if (patterns.test(value)) reasons.push("⚠️ CRITICAL: Authentication related value");
+    if (jwtRegex.test(value)) reasons.push("🔴 CRITICAL: JWT token detected");
+    if (hexRegex.test(value)) reasons.push("Long hexadecimal hash");
+    if (base64Regex.test(value)) reasons.push("Long base64 string");
     
-    // Configuración de seguridad - más estricto para cookies sensibles
-    if (esCookieSensible) {
-        if (!cookie.httpOnly) motivos.push("🔴 CRÍTICO: Cookie sensible accesible desde JavaScript (riesgo XSS)");
-        if (!cookie.secure && (esHttps || esLocalhost)) motivos.push("🔴 CRÍTICO: Cookie sensible sin flag Secure");
-        if (!cookie.sameSite || cookie.sameSite === 'none') motivos.push("🔴 CRÍTICO: Cookie sensible sin protección SameSite (riesgo CSRF)");
+    // Security configuration - stricter for sensitive cookies
+    if (isSensitiveCookie) {
+        if (!cookie.httpOnly) reasons.push("🔴 CRITICAL: Sensitive cookie accessible from JavaScript (XSS risk)");
+        if (!cookie.secure && (isHttps || isLocalhost)) reasons.push("🔴 CRITICAL: Sensitive cookie without Secure flag");
+        if (!cookie.sameSite || cookie.sameSite === 'none') reasons.push("🔴 CRITICAL: Sensitive cookie without SameSite protection (CSRF risk)");
     } else {
-        if (!cookie.httpOnly) motivos.push("Sin flag HttpOnly (accesible desde JavaScript)");
-        if (!cookie.secure && esHttps) motivos.push("Sin flag Secure en sitio HTTPS");
-        if (!cookie.sameSite || cookie.sameSite === 'none') motivos.push("Sin protección SameSite");
+        if (!cookie.httpOnly) reasons.push("Without HttpOnly flag (accessible from JavaScript)");
+        if (!cookie.secure && isHttps) reasons.push("Without Secure flag on HTTPS site");
+        if (!cookie.sameSite || cookie.sameSite === 'none') reasons.push("Without SameSite protection");
     }
     
-    const riesgo = calcularRiesgo(nombre, valor, cookie);
-    return { motivos, riesgo };
+    const risk = calculateRisk(name, value, cookie);
+    return { reasons, risk };
 }
 
 /**
- * Determina si una cookie es sospechosa/insegura.
+ * Determines if a cookie is suspicious/insecure
  */
-function esSospechosa(nombre, valor, cookie) {
-    const { riesgo } = motivosSospecha(nombre, valor, cookie);
-    return riesgo >= 30; // Cambiado: >= 30 para ser consistente
-}
-/**
- * Obtiene el color basado en el nivel de riesgo
- */
-function obtenerColorRiesgo(riesgo) {
-    if (riesgo >= 70) return 'critica';
-    if (riesgo >= 50) return 'alta';
-    if (riesgo >= 30) return 'media';
-    return 'baja';
+function isSuspicious(name, value, cookie) {
+    const { risk } = suspiciousReasons(name, value, cookie);
+    return risk >= 30;
 }
 
-// Función principal para cargar cookies
-async function cargarCookies() {
+/**
+ * Gets color based on risk level
+ */
+function getRiskColor(risk) {
+    if (risk >= 70) return 'critical';
+    if (risk >= 50) return 'high';
+    if (risk >= 30) return 'medium';
+    return 'low';
+}
+
+// Main function to load cookies
+async function loadCookies() {
   try {
-    // Obtener la pestaña activa
+    // Get active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTab = tab;
     
     if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('moz-extension://')) {
       document.getElementById("cookie-list").innerHTML = 
-        "<div class='no-cookies'>No se pueden analizar cookies en páginas internas del navegador.</div>";
+        "<div class='no-cookies'>Cannot analyze cookies on browser internal pages.</div>";
       return;
     }
 
-    // Obtener cookies del sitio actual
+    // Get cookies from current site
     const url = new URL(tab.url);
     const cookies = await chrome.cookies.getAll({ domain: url.hostname });
     
-    cookiesGuardadas = cookies;
-    mostrarCookies(cookies);
+    savedCookies = cookies;
+    showCookies(cookies);
   } catch (error) {
-    console.error('Error cargando cookies:', error);
+    console.error('Error loading cookies:', error);
     document.getElementById("cookie-list").innerHTML = 
-      "<div class='no-cookies'>Error cargando cookies: " + error.message + "</div>";
+      "<div class='no-cookies'>Error loading cookies: " + error.message + "</div>";
   }
 }
 
-function mostrarCookies(cookies) {
-  const lista = document.getElementById("cookie-list");
-  lista.innerHTML = "";
+function showCookies(cookies) {
+  const list = document.getElementById("cookie-list");
+  list.innerHTML = "";
 
-  // Ordenar cookies por nivel de riesgo (mayor riesgo primero)
-  const cookiesOrdenadas = cookies.sort((a, b) => {
-    const riesgoA = calcularRiesgo(a.name, a.value, a);
-    const riesgoB = calcularRiesgo(b.name, b.value, b);
-    return riesgoB - riesgoA;
+  // Sort cookies by risk level (highest risk first)
+  const sortedCookies = cookies.sort((a, b) => {
+    const riskA = calculateRisk(a.name, a.value, a);
+    const riskB = calculateRisk(b.name, b.value, b);
+    return riskB - riskA;
   });
 
-  cookiesOrdenadas.forEach(c => {
-    const { motivos, riesgo } = motivosSospecha(c.name, c.value, c);
-    const sospechosa = riesgo >= 30; // Cambiado: >= 30 es sospechosa
-    const nivelRiesgo = obtenerColorRiesgo(riesgo);
+  sortedCookies.forEach(c => {
+    const { reasons, risk } = suspiciousReasons(c.name, c.value, c);
+    const suspicious = risk >= 30;
+    const riskLevel = getRiskColor(risk);
     
     const div = document.createElement("div");
-    // CORRECCIÓN: Si el riesgo es < 30, usar 'segura', sino usar el nivel de riesgo
-    div.className = `cookie ${riesgo < 30 ? 'segura' : nivelRiesgo}`;
+    // CORRECTION: If risk is < 30, use 'safe', otherwise use risk level
+    div.className = `cookie ${risk < 30 ? 'safe' : riskLevel}`;
 
-    let expira = c.expirationDate
+    let expires = c.expirationDate
       ? new Date(c.expirationDate * 1000).toLocaleString()
-      : "Sesión";
+      : "Session";
 
-    // Truncar valor si es muy largo
-    const valorMostrado = c.value.length > 50 
+    // Truncate value if too long
+    const displayValue = c.value.length > 50 
       ? c.value.substring(0, 50) + '...' 
       : c.value;
 
     div.innerHTML = `
       <div class="cookie-header">
         <strong>${c.name}</strong>
-        <span class="riesgo-badge riesgo-${nivelRiesgo}">Riesgo: ${riesgo}%</span>
+        <span class="risk-badge risk-${riskLevel}">Risk: ${risk}%</span>
       </div>
       <div class="cookie-details">
-        <strong>Valor:</strong> <code title="${c.value}">${valorMostrado}</code><br>
-        <strong>Dominio:</strong> ${c.domain}<br>
-        <strong>Seguridad:</strong> Secure: ${c.secure ? '✓' : '✗'}, HttpOnly: ${c.httpOnly ? '✓' : '✗'}, SameSite: ${c.sameSite || 'None'}<br>
-        <strong>Expira:</strong> ${expira}
+        <strong>Value:</strong> <code title="${c.value}">${displayValue}</code><br>
+        <strong>Domain:</strong> ${c.domain}<br>
+        <strong>Security:</strong> Secure: ${c.secure ? '✓' : '✗'}, HttpOnly: ${c.httpOnly ? '✓' : '✗'}, SameSite: ${c.sameSite || 'None'}<br>
+        <strong>Expires:</strong> ${expires}
       </div>
     `;
 
-    // Solo mostrar motivos y botón eliminar si es sospechosa (riesgo >= 30)
-    if (sospechosa && motivos.length > 0) {
-      const motivosDiv = document.createElement("div");
-      motivosDiv.className = "motivos-sospecha";
-      motivosDiv.innerHTML = "<strong>⚠️ Motivos de alerta:</strong>";
+    // Only show reasons and delete button if suspicious (risk >= 30)
+    if (suspicious && reasons.length > 0) {
+      const reasonsDiv = document.createElement("div");
+      reasonsDiv.className = "suspicious-reasons";
+      reasonsDiv.innerHTML = "<strong>⚠️ Alert reasons:</strong>";
       
       const ul = document.createElement("ul");
-      motivos.forEach(m => {
+      reasons.forEach(r => {
         const li = document.createElement("li");
-        li.textContent = m;
+        li.textContent = r;
         ul.appendChild(li);
       });
-      motivosDiv.appendChild(ul);
-      div.appendChild(motivosDiv);
+      reasonsDiv.appendChild(ul);
+      div.appendChild(reasonsDiv);
 
       const btn = document.createElement("button");
-      btn.textContent = "🗑️ Eliminar";
-      btn.className = "btn-eliminar";
-      btn.onclick = () => eliminarCookie(c);
+      btn.textContent = "🗑️ Remove";
+      btn.className = "btn-remove";
+      btn.onclick = () => removeCookie(c);
       div.appendChild(btn);
     }
 
-    lista.appendChild(div);
+    list.appendChild(div);
   });
 
   if (cookies.length === 0) {
-    lista.innerHTML = "<div class='no-cookies'>No hay cookies disponibles.</div>";
+    list.innerHTML = "<div class='no-cookies'>No cookies available.</div>";
   }
 
-  // Mostrar resumen de riesgos
-  mostrarResumenRiesgos(cookies);
+  // Show risk summary
+  showRiskSummary(cookies);
 }
 
-
 /**
- * Muestra un resumen de los riesgos encontrados
+ * Shows summary of found risks
  */
-function mostrarResumenRiesgos(cookies) {
-  const resumen = document.getElementById("resumen-riesgos") || document.createElement("div");
-  resumen.id = "resumen-riesgos";
-  resumen.className = "resumen-riesgos";
+function showRiskSummary(cookies) {
+  const summary = document.getElementById("risk-summary") || document.createElement("div");
+  summary.id = "risk-summary";
+  summary.className = "risk-summary";
 
   const stats = {
     total: cookies.length,
-    criticas: 0,
-    altas: 0,
-    medias: 0,
-    bajas: 0,
-    seguras: 0
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    safe: 0
   };
 
   cookies.forEach(c => {
-    const riesgo = calcularRiesgo(c.name, c.value, c);
+    const risk = calculateRisk(c.name, c.value, c);
     
-    // CORRECCIÓN: Las cookies con riesgo < 30 se consideran seguras
-    if (riesgo < 30) {
-      stats.seguras++;
-    } else if (riesgo >= 70) {
-      stats.criticas++;
-    } else if (riesgo >= 50) {
-      stats.altas++;
-    } else if (riesgo >= 30) {
-      stats.medias++;
+    // CORRECTION: Cookies with risk < 30 are considered safe
+    if (risk < 30) {
+      stats.safe++;
+    } else if (risk >= 70) {
+      stats.critical++;
+    } else if (risk >= 50) {
+      stats.high++;
+    } else if (risk >= 30) {
+      stats.medium++;
     }
   });
 
-  resumen.innerHTML = `
-    <h3>📊 Resumen de Análisis</h3>
+  summary.innerHTML = `
+    <h3>📊 Analysis Summary</h3>
     <div class="stats-grid">
-      <div class="stat critica">Críticas: ${stats.criticas}</div>
-      <div class="stat alta">Altas: ${stats.altas}</div>
-      <div class="stat media">Medias: ${stats.medias}</div>
-      <div class="stat segura">Seguras: ${stats.seguras}</div>
+      <div class="stat critical">Critical: ${stats.critical}</div>
+      <div class="stat high">High: ${stats.high}</div>
+      <div class="stat medium">Medium: ${stats.medium}</div>
+      <div class="stat safe">Safe: ${stats.safe}</div>
     </div>
   `;
 
-  if (!document.getElementById("resumen-riesgos")) {
-    document.getElementById("cookie-list").parentNode.insertBefore(resumen, document.getElementById("cookie-list"));
+  if (!document.getElementById("risk-summary")) {
+    document.getElementById("cookie-list").parentNode.insertBefore(summary, document.getElementById("cookie-list"));
   }
 }
 
-// Función para eliminar una cookie específica
-async function eliminarCookie(cookie) {
+// Function to remove a specific cookie
+async function removeCookie(cookie) {
   try {
     await chrome.cookies.remove({
       url: `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`,
       name: cookie.name
     });
     
-    // Recargar la lista
-    cargarCookies();
+    // Reload list
+    loadCookies();
   } catch (error) {
-    console.error('Error eliminando cookie:', error);
-    alert('Error al eliminar la cookie: ' + error.message);
+    console.error('Error removing cookie:', error);
+    alert('Error removing cookie: ' + error.message);
   }
 }
 
-// Función para eliminar cookies sospechosas
-async function eliminarSospechosas() {
-  if (!cookiesGuardadas || cookiesGuardadas.length === 0) {
-    alert('No hay cookies para analizar');
+// Function to remove suspicious cookies
+async function removeSuspicious() {
+  if (!savedCookies || savedCookies.length === 0) {
+    alert('No cookies to analyze');
     return;
   }
 
-  const sospechosas = cookiesGuardadas.filter(c => esSospechosa(c.name, c.value, c));
+  const suspicious = savedCookies.filter(c => isSuspicious(c.name, c.value, c));
   
-  if (sospechosas.length === 0) {
-    alert('No se encontraron cookies sospechosas');
+  if (suspicious.length === 0) {
+    alert('No suspicious cookies found');
     return;
   }
 
-  if (confirm(`¿Eliminar ${sospechosas.length} cookies sospechosas?`)) {
+  if (confirm(`Remove ${suspicious.length} suspicious cookies?`)) {
     try {
-      for (const cookie of sospechosas) {
+      for (const cookie of suspicious) {
         await chrome.cookies.remove({
           url: `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`,
           name: cookie.name
         });
       }
-      cargarCookies();
+      loadCookies();
     } catch (error) {
-      console.error('Error eliminando cookies:', error);
-      alert('Error al eliminar cookies: ' + error.message);
+      console.error('Error removing cookies:', error);
+      alert('Error removing cookies: ' + error.message);
     }
   }
 }
 
-// Función para eliminar todas las cookies
-async function eliminarTodas() {
+// Function to remove all cookies
+async function removeAll() {
   if (!currentTab) {
-    alert('No se pudo obtener información de la pestaña actual');
+    alert('Could not get current tab information');
     return;
   }
 
@@ -443,30 +443,30 @@ async function eliminarTodas() {
     const cookies = await chrome.cookies.getAll({ domain: url.hostname });
     
     if (cookies.length === 0) {
-      alert('No hay cookies para eliminar');
+      alert('No cookies to remove');
       return;
     }
 
-    if (confirm(`¿Eliminar TODAS las ${cookies.length} cookies del sitio ${url.hostname}?`)) {
+    if (confirm(`Remove ALL ${cookies.length} cookies from site ${url.hostname}?`)) {
       for (const cookie of cookies) {
         await chrome.cookies.remove({
           url: `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`,
           name: cookie.name
         });
       }
-      cargarCookies();
+      loadCookies();
     }
   } catch (error) {
-    console.error('Error eliminando todas las cookies:', error);
-    alert('Error al eliminar cookies: ' + error.message);
+    console.error('Error removing all cookies:', error);
+    alert('Error removing cookies: ' + error.message);
   }
 }
 
-// Event listeners para los botones
+// Event listeners for buttons
 document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('eliminar-sospechosas').addEventListener('click', eliminarSospechosas);
-  document.getElementById('eliminar-todas').addEventListener('click', eliminarTodas);
+  document.getElementById('remove-suspicious').addEventListener('click', removeSuspicious);
+  document.getElementById('remove-all').addEventListener('click', removeAll);
   
-  // Cargar cookies al iniciar
-  cargarCookies();
+  // Load cookies on start
+  loadCookies();
 });
