@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Cookie Analyzer",
   "version": "2.9",
-  "description": "Analiza, exporta y elimina cookies del sitio actual. El análisis no es infalible. Siempre es recomendable complementar este análisis con otras herramientas y buenas prácticas de seguridad.",
+  "description": "Analyze, export and remove cookies from current site. Analysis is not infallible. Always recommended to complement this analysis with other tools and security best practices.",
   "permissions": [
     "cookies",
     "tabs",
