@@ -8,16 +8,14 @@
 <body>
   <h2>Cookie Analyzer</h2>
 
-  <div class="leyenda">
-    <span class="sospechosa">Rojo</span>: Cookie sospechosa (nombre o valor raro)<br><br>
-    <span class="segura">Verde</span>: Cookie segura
+ const htmlContent = `
+  <div class="legend">
+    <span class="suspicious">Red</span>: Suspicious cookie (unusual name or value)<br><br>
+    <span class="safe">Green</span>: Safe cookie
   </div>
-
-  <div id="cookie-list">Cargando cookies...</div>
-
-  <button id="eliminar-sospechosas">Eliminar sospechosas</button>
-  <button id="eliminar-todas">Eliminar TODAS las cookies del sitio</button>
-
+  <div id="cookie-list">Loading cookies...</div>
+  <button id="remove-suspicious">Remove Suspicious</button>
+  <button id="remove-all">Remove ALL site cookies</button>
   <script src="popup.js"></script>
 </body>
 </html>
