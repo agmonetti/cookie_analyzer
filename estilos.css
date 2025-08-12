@@ -13,7 +13,7 @@ h2 {
   gap: 5px;
 }
 
-/* Puedes agregar esto a estilos.css si quieres resaltar los motivos */
+/* Highlight reasons in suspicious cookies */
 .cookie ul {
   margin-top: 4px;
   margin-bottom: 0;
@@ -34,12 +34,12 @@ h2 {
   transition: background-color 0.3s ease;
 }
 
-.sospechosa {
+.suspicious {
   background-color: #f8d7da;
   border-color: #f5c6cb;
 }
 
-.segura {
+.safe {
   background-color: #a5f0b6;
   border-color: #a5f0b6;
 }
@@ -66,7 +66,7 @@ button:active {
   background-color: #1e2b78;
 }
 
-.leyenda {
+.legend {
   font-size: 12px;
   margin-bottom: 10px;
   padding: 6px;
@@ -76,40 +76,40 @@ button:active {
   color: #333;
 }
 
-.leyenda span {
+.legend span {
   font-weight: bold;
   padding: 2px 5px;
   border-radius: 3px;
 }
 
-.leyenda .sospechosa {
+.legend .suspicious {
   background-color: #f8d7da;
   color: #721c24;
 }
 
-.leyenda .segura {
+.legend .safe {
   background-color: #d4edda;
   color: #155724;
 }
 
-.cookie.critica {
+.cookie.critical {
   background-color: #f8d7da;
   border-color: #dc3545;
   border-width: 2px;
 }
 
-.cookie.alta {
+.cookie.high {
   background-color: #fff3cd;
   border-color: #ffc107;
   border-width: 2px;
 }
 
-.cookie.media {
+.cookie.medium {
   background-color: #cce5ff;
   border-color: #007bff;
 }
 
-.cookie.baja {
+.cookie.low {
   background-color: #f0f9ff;
   border-color: #17a2b8;
 }
@@ -121,7 +121,7 @@ button:active {
   margin-bottom: 8px;
 }
 
-.riesgo-badge {
+.risk-badge {
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 12px;
@@ -129,10 +129,22 @@ button:active {
   color: white;
 }
 
-.riesgo-critica { background-color: #dc3545; }
-.riesgo-alta { background-color: #ffc107; color: #000; }
-.riesgo-media { background-color: #007bff; }
-.riesgo-baja { background-color: #17a2b8; }
+.risk-critical { 
+  background-color: #dc3545; 
+}
+
+.risk-high { 
+  background-color: #ffc107; 
+  color: #000; 
+}
+
+.risk-medium { 
+  background-color: #007bff; 
+}
+
+.risk-low { 
+  background-color: #17a2b8; 
+}
 
 .cookie-details {
   font-size: 12px;
@@ -140,7 +152,7 @@ button:active {
   margin-bottom: 8px;
 }
 
-.motivos-sospecha {
+.suspicious-reasons {
   background-color: rgba(220, 53, 69, 0.1);
   padding: 6px;
   border-radius: 4px;
@@ -148,35 +160,35 @@ button:active {
   font-size: 11px;
 }
 
-.motivos-sospecha ul {
+.suspicious-reasons ul {
   margin: 4px 0 0 0;
   padding-left: 16px;
 }
 
-.motivos-sospecha li {
+.suspicious-reasons li {
   margin-bottom: 2px;
   color: #721c24;
 }
 
-.btn-eliminar {
+.btn-remove {
   background-color: #dc3545;
   font-size: 12px;
   padding: 4px 8px;
   margin-top: 6px;
 }
 
-.btn-eliminar:hover {
+.btn-remove:hover {
   background-color: #c82333;
 }
 
-.resumen-riesgos {
+.risk-summary {
   background-color: #e9ecef;
   padding: 10px;
   border-radius: 6px;
   margin-bottom: 15px;
 }
 
-.resumen-riesgos h3 {
+.risk-summary h3 {
   margin: 0 0 8px 0;
   font-size: 14px;
   text-align: center;
@@ -196,10 +208,25 @@ button:active {
   font-weight: bold;
 }
 
-.stat.critica { background-color: #dc3545; color: white; }
-.stat.alta { background-color: #ffc107; color: #000; }
-.stat.media { background-color: #007bff; color: white; }
-.stat.segura { background-color: #28a745; color: white; }
+.stat.critical { 
+  background-color: #dc3545; 
+  color: white; 
+}
+
+.stat.high { 
+  background-color: #ffc107; 
+  color: #000; 
+}
+
+.stat.medium { 
+  background-color: #007bff; 
+  color: white; 
+}
+
+.stat.safe { 
+  background-color: #28a745; 
+  color: white; 
+}
 
 .no-cookies {
   text-align: center;
